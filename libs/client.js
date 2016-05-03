@@ -6,7 +6,7 @@ const rl = readline.createInterface({
 	output: process.stdout
 });
 
-const ws = new WebSocket('ws://127.0.0.1:8060/');
+const ws = new WebSocket('ws://cmc-tasklists-1.herokuapp.com:8060/');
 
 
 function p(ws, cmd, callback) {
