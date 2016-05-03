@@ -1,4 +1,5 @@
 const WebSocket = require('ws');
+const Promise = require('bluebird');
 const readline = require('readline');
 const rl = readline.createInterface({
 	input: process.stdin,
@@ -7,7 +8,14 @@ const rl = readline.createInterface({
 
 const ws = new WebSocket('ws://127.0.0.1:8060/');
 
-function p(ws, cmd) {
+
+function p(ws, cmd, callback) {
+	if (callback)
+		//ws.on('message', callback);
+		ws.on('message', function fff(message) {
+			ws.removeListener('message', fff);
+			callback(undefined, message);
+		});
 	function send(object) {
 		return ws.send(JSON.stringify(object));
 	}
@@ -18,6 +26,8 @@ function p(ws, cmd) {
 		console.log('user: login id logout');
 		console.log('tasklist: getall newtl deltl grant revoke');
 		console.log('task: addtask removetask close reopen comment');
+		rl.prompt();
+		break;
 	case 'login':
 		send({ type: cmd[0], login: cmd[1], password: cmd[2] });
 		break;
@@ -101,4 +111,28 @@ ws.on('open', function open() {
 		rl.write('\n');
 		process.exit(0);
 	});
+	
+	// var pAsync = Promise.promisify(p);
+//
+// 	pAsync(ws, ["login", "u", "p"])
+// 	//.then(message => console.log(message))
+// 	//.then(() => pAsync(ws, ["login", "usrsse2", "123"]))
+// 	.then(message => {
+// 		console.log(message);
+// 		return pAsync(ws, ["login", "usrsse2", "123"]);
+// 	})
+// 	.then(message => {
+// 		msg = JSON.parse(message);
+// 		if (msg.status != "OK")
+// 			throw message;
+// 	})
+// 	.catch(e => console.log('Error: \n' + e.toString()));
+
+	
+	// p(ws, ["login", "u", "p"], function(err, message) {
+	// 	console.log(message);
+	// 	p(ws, ["login", "usrsse2", "123"], function(err, message) {
+	// 		console.log(message);
+	// 	});
+	// });
 });
