@@ -7,103 +7,10 @@ var Promise = require('bluebird');
 Promise.promisifyAll(Collection.prototype);
 Promise.promisifyAll(MongoClient);
 Promise.promisifyAll(Cursor.prototype);
-/* 
-var myCollection;
-var db;
- 
-function removeDocument(onRemove){
-    myCollection.findAndModify({name: "doduck"}, [], {remove:true}, function(err, object) {
-        if(err)
-            throw err;
-        console.log("document deleted");
-        onRemove();
-    });
-}
- 
-function findDocument(onFinded){
-    var cursor = myCollection.find({"name" : "doduck", "company.officialName" : "doduck LTD" });
-    cursor.each(function(err, doc) {
-        if(err)
-            throw err;
-        if(doc==null)
-            return;
- 
-        console.log("document find:");
-        console.log(doc.name);
-        console.log(doc.company.employed);
-        onFinded();
-    });
-}
- 
-function fieldComplexeUpdateDocument(onUpdate){
-    myCollection.update({name: "doduck"}, {$set: {company: {employed: 10, officialName: "doduck LTD", industries: ["it consulting", "passionate programming"]}}}, {w:1}, function(err) {
-        if(err)
-            throw err;
-        console.log('entry updated');
-        onUpdate();
-    });
-}
- 
-function fieldUpdateDocument(onUpdate){
-    myCollection.update({name: "doduck"}, {$set: {industry: "France"}}, {w:1}, function(err) {
-        if(err)
-            throw err;
-        console.log('entry updated');
-        onUpdate();
-    });
-}
- 
-function simpleUpdateDocument(onUpdate){
-    myCollection.update({name: "doduck"}, {name: "doduck", description: "prototype your idea"}, {w:1}, function(err) {
-    if(err)
-        throw err;
-        console.log('entry updated');
-        onUpdate();
-    });
-}
- 
-function addDocument(onAdded){
-    myCollection.insert({name: "doduck", description: "learn more than everyone"}, function(err, result) {
-        if(err)
-            throw err;
- 
-        console.log("entry saved");
-        onAdded();
-    });
-}
- 
-function createConnection(onCreate){
-    MongoClient.connect('mongodb://127.0.0.1:27017/test', function(err, db) {
-        if(err)
-            throw err;
-        console.log("connected to the mongoDB !");
-        myCollection = db.collection('test_collection');
- 
-        onCreate();
-    });
-}
- 
-createConnection(function(){
-    addDocument(function(){
-        simpleUpdateDocument(function(){
-            fieldUpdateDocument(function(){
-                fieldComplexeUpdateDocument(function(){
-                    findDocument(function(){
-                        removeDocument(function(){
-                            console.log("The end");
-                        });
-                    });
-                });
-            });
-        });
-    });
-});
-
-*/
 
 
 const WebSocketServer = require('ws').Server;
-const wss = new WebSocketServer({ port: 8060 }); // это сервер
+const wss = new WebSocketServer({ port: process.env.PORT }); // это сервер
 
 const url = require('url');
 
@@ -424,34 +331,3 @@ wss.on('connection', function connection(ws) { // ws - это соединени
   			delete users2connections[login];
   	});
 });
-
-
-var express = require('express');
-var bodyParser = require('body-parser');
-var app = express();
-app.use(bodyParser());
-
-
-app.post('/register', function(req, res) {
-	dbConnection.collection('usercollection').insertAsync({
-        "login" : req.body.login,
-    	"password" : req.body.password
-	 })
-	 .then(function() {
-		res.write('Registration successful\n');
-		res.write('Your login: ' + req.body.login + '\n');
-		res.write('Your password: ' + req.body.password + '\n');
-		res.end();
-    })
-    .catch(function(e) { return typeof(e) == mongodb.WriteError && e.code == 11000; }, function() {
-    	res.send("Already registered");
-    	res.end();
-    })
-    .catch(function(e) {
-        res.write("There was a problem adding the information to the database:\n");
-		res.write(e.toString());
-		res.end(); 
-    });
-});
-app.use(express.static(__dirname + '/html'));
-app.listen(process.env.PORT);
