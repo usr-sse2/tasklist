@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "bluebird": "^3.3.4",
+    "chai": "^3.5.0",
     "mongodb": "^2.1.16",
     "ws": "^1.1.0"
   }
