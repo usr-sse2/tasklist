@@ -53,7 +53,7 @@ describe('LoginTests', function() {
 	
 	beforeEach(function(done) {
 		ws = new WSConnection();
-		ws.connect('ws://cmc-tasklists.herokuapp.com/')
+		ws.connect('ws://localhost:' + process.env.PORT)
 		.then(done)
 		.catch(done);
 		 //ws.should.eventually;		

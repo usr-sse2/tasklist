@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "test": "./node_modules/.bin/mocha"
+    "test": "./run_tests.sh"
   },
   "author": "usr-sse2",
   "license": "ISC",
