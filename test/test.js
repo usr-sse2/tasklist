@@ -9,16 +9,6 @@ const chaiAsPromised = require('chai-as-promised');
 
 chai.use(chaiAsPromised);
 
-
-function checkstatus(desired) {
-	return function(message) {
-		var msg = JSON.parse(message);
-		if (msg.status != desired)
-			throw message;
-	}
-}
-
-
 function WSConnection() {
     'use strict';
     this.socket = {};
@@ -48,30 +38,57 @@ WSConnection.prototype.disconnect = function () {
     this.socket.close();
 };
 
+var ws;
+function connect(done) {
+	ws = new WSConnection();
+	ws.connect('ws://localhost:' + process.env.PORT)
+	.then(() => done())
+	.catch(done);
+}
+
+function disconnect() {
+	ws.disconnect();
+}
+
 describe('LoginTests', function() {
-	var ws;
-	
-	beforeEach(function(done) {
-		ws = new WSConnection();
-		ws.connect('ws://localhost:' + process.env.PORT)
-		.then(done)
-		.catch(done);
-		 //ws.should.eventually;		
-		 //console.log(ws);
-	});
-	
+	beforeEach(connect);
+	afterEach(disconnect);
 
 	it('respond with OK on correct login and password', function() {
 		return pAsync(ws.socket, ['login', 'u', 'p'])
-		.should.become(JSON.stringify({ status: 'OK' }));
+		.should.become('{"status":"OK"}')
+		.then(() => pAsync(ws.socket, ['id']))
+		.should.become('{"status":"OK","id":"u"}');
 	});
 	
 	it('respond with error on incorrect login and password', function() {
 		return pAsync(ws.socket, ['login', 'u', 'password'])
-		.should.become(JSON.stringify({ status: 'Wrong login/password' }));
-	})
+		.should.become('{"status":"Wrong login/password"}')
+		.then(() => pAsync(ws.socket, ['id']))
+		.should.become('{"status":"Not logged in"}');
+	})	
+});
+
+
+function connectAndLogin(done) {
+	ws = new WSConnection();
+	ws.connect('ws://localhost:' + process.env.PORT)
+	.then(() => pAsync(ws.socket, ['login', 'u', 'p']))
+	.then(() => done())
+	.catch(done);	
+}
+
+describe('TasklistTests', function() {
+	before(connectAndLogin);
+	after(disconnect);
 	
-	afterEach(function() {
-		ws.disconnect();
+	var tlname;
+	
+	it('successfully creates tasklist', function() {
+		// tlname = '     __test_tasklist' + new Date().toString();
+// 		return pAsync(ws.socket, ['newtl', tlname])
+// 		.should.become('{"status":"OK"}')
+// 		.then(() => pAsync(ws.socket, ['getall'])
+//.should.eventually.contain()
 	});
 });

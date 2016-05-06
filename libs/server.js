@@ -93,7 +93,7 @@ MongoClient.connectAsync(process.env.MONGODB_URI)
 		});
 	
 		methods['logout'] = checklogin(() => {
-	  		delete users2connections[login];
+			delete users2connections[login];
 			login = undefined;
 			ok();
 		});
@@ -156,176 +156,187 @@ MongoClient.connectAsync(process.env.MONGODB_URI)
 			.then(() => {
 				ok();
 				for (user of tasklist.allowed)
-					notify(user, 
-						'State of task ' + message.task + 
-						' in tasklist ' + message.tasklist + 
-						' has been changed to ' + message.state);
-			})
-			.catch(errorhandler);
-		});
+				notify(user, 
+					'State of task ' + message.task + 
+					' in tasklist ' + message.tasklist + 
+					' has been changed to ' + message.state);
+				})
+				.catch(errorhandler);
+			});
 	
-		methods['addtask'] = checklogin(message => {
-			const tasklists = dbConnection.collection('tasklists');
+			methods['addtask'] = checklogin(message => {
+				const tasklists = dbConnection.collection('tasklists');
 		
-			var tasklist;
-			tasklists.findOneAsync({ name: message.tasklist })
-			.then(tl => {
-				if (tl == undefined)
-					throw 'Tasklist ' + message.tasklist + ' not found';
-				if (tl.allowed.indexOf(login) == -1)
-					throw 'Permission denied';
-				tasklist = tl;
-				// ОПОПОП ТРАНЗАКЦИИ
-				// Если двое добавят одновременно, добавится только одна задача
-				switch (message.type) {
-				case 'addtask':
-					if (tl.tasks.findIndex(task => task.description == message.description) != -1)
-						throw 'Task names should be distinct';
-					tl.tasks.push(new Task(message.description));
-					break;
-				case 'removetask':
-					tl.tasks.splice(tl.tasks.findIndex(task => task.description == message.description));
-					break;
-				}
-				return tasklists.updateAsync({ _id: tl._id }, tl);
-			})
-			.then(() => {
-				ok();
-				for (user of tasklist.allowed)
+				var tasklist;
+				tasklists.findOneAsync({ name: message.tasklist })
+				.then(tl => {
+					if (tl == undefined)
+						throw 'Tasklist ' + message.tasklist + ' not found';
+					if (tl.allowed.indexOf(login) == -1)
+						throw 'Permission denied';
+					tasklist = tl;
+					// ОПОПОП ТРАНЗАКЦИИ
+					// Если двое добавят одновременно, добавится только одна задача
+					switch (message.type) {
+					case 'addtask':
+						if (tl.tasks.findIndex(task => task.description == message.description) != -1)
+							throw 'Task names should be distinct';
+						tl.tasks.push(new Task(message.description));
+						break;
+					case 'removetask':
+						tl.tasks.splice(tl.tasks.findIndex(task => task.description == message.description));
+						break;
+					}
+					return tasklists.updateAsync({ _id: tl._id }, tl);
+				})
+				.then(() => {
+					ok();
+					for (user of tasklist.allowed)
 					notify(user, login + 
 						(message.type == 'addtask' ? ' added new task ' : ' removed task ') +
 						message.description + ' in tasklist ' + message.tasklist);
-			})
-			.catch(errorhandler);
-		});
+					})
+					.catch(errorhandler);
+				});
 	
-		methods['removetask'] = methods['addtask'];
+				methods['removetask'] = methods['addtask'];
 	
-		methods['comment'] = checklogin(message => {
-			const tasklists = dbConnection.collection('tasklists');
+				methods['comment'] = checklogin(message => {
+					const tasklists = dbConnection.collection('tasklists');
 		
-			var tasklist;
+					var tasklist;
 		
-			tasklists.findOneAsync({ name: message.tasklist })
-			.then(tl => {
-				if (tl == undefined)
-					throw 'Tasklist ' + message.tasklist + ' not found';
-				tasklist = tl;
-				var task = tl.tasks.find(x => x.description == message.task);
-				if (task == undefined)
-					throw 'Task ' + message.task + ' not found';
-				task.comments.push(new Comment(login, message.comment));
-				return tasklists.updateAsync({ _id: tl._id }, tl);
-			})
-			.then(() => {
-				ok();
-				for (user of tasklist.allowed)
-					notify(user, login + ' posted a new comment on task ' + message.task + ' in tasklist ' + message.tasklist);
-			})
-			.catch(errorhandler);
-		});
+					tasklists.findOneAsync({ name: message.tasklist })
+					.then(tl => {
+						if (tl == undefined)
+							throw 'Tasklist ' + message.tasklist + ' not found';
+						tasklist = tl;
+						var task = tl.tasks.find(x => x.description == message.task);
+						if (task == undefined)
+							throw 'Task ' + message.task + ' not found';
+						task.comments.push(new Comment(login, message.comment));
+						return tasklists.updateAsync({ _id: tl._id }, tl);
+					})
+					.then(() => {
+						ok();
+						for (user of tasklist.allowed)
+							notify(user, login + ' posted a new comment on task ' + message.task + ' in tasklist ' + message.tasklist);
+					})
+					.catch(errorhandler);
+				});
 	
-		methods['getall'] = () => {
-			dbConnection.collection('tasklists')
-			.findAsync()
-			.then(data => data.toArrayAsync())
-			.then(results => { reply({ status: 'OK', type: 'tasklists', tasklists: results }); })
-			.catch(errorhandler);
-		};
+				methods['getall'] = () => {
+					dbConnection.collection('tasklists')
+					.findAsync()
+					.then(data => data.toArrayAsync())
+					.then(results => { 
+						reply({ status: 'OK', type: 'tasklists', tasklists:
+						results.map(x => {
+							delete x._id;
+							return x;
+						}) 
+					}); 
+				})
+				.catch(errorhandler);
+			};
 	
-		methods['grant'] = checklogin(message => {
-			var tasklist;
+			methods['gettl'] = () => {
+				errorhandler('Not implemented');
+			};
+	
+			methods['grant'] = checklogin(message => {
+				var tasklist;
 		
-			const tasklists = dbConnection.collection('tasklists');
-			const usercollection = dbConnection.collection('usercollection');
+				const tasklists = dbConnection.collection('tasklists');
+				const usercollection = dbConnection.collection('usercollection');
 		
-			tasklists.findOneAsync({ name: message.tasklist })
-			.then((tl) => {
-				tasklist = tl;
-				if (tasklist == undefined)
-					throw('Tasklist ' + message.tasklist + ' not found');
-				if (tasklist.owner != login)
-					throw('Only owner can change permissions');
+				tasklists.findOneAsync({ name: message.tasklist })
+				.then((tl) => {
+					tasklist = tl;
+					if (tasklist == undefined)
+						throw('Tasklist ' + message.tasklist + ' not found');
+					if (tasklist.owner != login)
+						throw('Only owner can change permissions');
 			
-				return usercollection.findOneAsync({ login: message.user });
-			})
-			.then(user => {
-				if (user == undefined)
-					throw('User not found' );
-				switch (message.type) {
-				case 'grant':
-					if (tasklist.allowed.indexOf(message.user) == -1)
-					    tasklist.allowed.push(message.user);
-					else
-					    throw('User already has permissions');
-					break;
-				case 'revoke':
-					var index = tasklist.allowed.indexOf(message.user); 
-					if (index != -1) 
-						tasklist.allowed.splice(index);
-					else
-						throw("User didn't have permissions");
-					break;
-				}
-				return tasklists.updateAsync({ _id: tasklist._id }, tasklist);
-			})
-			.then(() => {
-				ok();
-				notify(message.user, 'Now you ' +
+					return usercollection.findOneAsync({ login: message.user });
+				})
+				.then(user => {
+					if (user == undefined)
+						throw('User not found' );
+					switch (message.type) {
+					case 'grant':
+						if (tasklist.allowed.indexOf(message.user) == -1)
+							tasklist.allowed.push(message.user);
+						else
+							throw('User already has permissions');
+						break;
+					case 'revoke':
+						var index = tasklist.allowed.indexOf(message.user); 
+						if (index != -1) 
+							tasklist.allowed.splice(index);
+						else
+							throw("User didn't have permissions");
+						break;
+					}
+					return tasklists.updateAsync({ _id: tasklist._id }, tasklist);
+				})
+				.then(() => {
+					ok();
+					notify(message.user, 'Now you ' +
 					(message.type == 'grant' ? '' : "don't ") +
 					'have modification rights for tasklist ' + message.tasklist);
-			})
-			.catch(errorhandler);
+				})
+				.catch(errorhandler);
+			});
+	
+			methods['revoke'] = methods['grant'];
+			//	methods.message = (message) => {
+				//		message.from = ws.data_id;
+				//		wss.clients.forEach((client) => client.send(JSON.stringify(message)));
+				//	}
+				// send message to all clients except current
+	
+	
+				ws.on('message', function incoming(message) {
+					message = JSON.parse(message);
+					methods[message.type](message);
+				});
+				ws.on('close', function(reasonCode, description) {
+					if (login != undefined)
+						delete users2connections[login];
+				});
+			});
+		})
+		.catch(function(e) {
+			console.log(e);
+			process.exit(e.code);
 		});
-	
-		methods['revoke'] = methods['grant'];
-	//	methods.message = (message) => {
-	//		message.from = ws.data_id;
-	//		wss.clients.forEach((client) => client.send(JSON.stringify(message)));
-	//	}
-		// send message to all clients except current
-	
-	
-		ws.on('message', function incoming(message) {
-		  message = JSON.parse(message);
-		  methods[message.type](message);
-	  	});
-	  	ws.on('close', function(reasonCode, description) {
-	  		if (login != undefined)
-	  			delete users2connections[login];
-	  	});
-	});
-})
-.catch(function(e) {
-	console.log(e);
-	process.exit(e.code);
-});
 
-function Comment(author, text) {
-	// Author
-	// Text
-	// Date
-	this.author = author;
-	this.text = text;
-	this.date = new Date();
-}
+		function Comment(author, text) {
+			// Author
+			// Text
+			// Date
+			this.author = author;
+			this.text = text;
+			this.date = new Date();
+		}
 
-function Task(description) {
-	// Description
-	// Status
-	// Comments
-	this.description = description;
-	this.status = 'open';
-	this.comments = [];
-}
+		function Task(description) {
+			// Description
+			// Status
+			// Comments
+			this.description = description;
+			this.status = 'open';
+			this.comments = [];
+		}
 
-function TaskList(name, owner) {
-	// Name
-	// Owner
-	// Allowed users
-	// Tasks	
-	this.name = name;
-	this.owner = owner;
-	this.allowed = [owner];
-	this.tasks = [];
-}
+		function TaskList(name, owner) {
+			// Name
+			// Owner
+			// Allowed users
+			// Tasks	
+			this.name = name;
+			this.owner = owner;
+			this.allowed = [owner];
+			this.tasks = [];
+		}
