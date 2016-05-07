@@ -240,8 +240,21 @@ MongoClient.connectAsync(process.env.MONGODB_URI)
 				.catch(errorhandler);
 			};
 	
-			methods['gettl'] = () => {
-				errorhandler('Not implemented');
+			methods['gettl'] = (message) => {
+				dbConnection.collection('tasklists')
+				.findOneAsync({ name: message.name })
+				.then(tasklist => {
+					if (tasklist) {
+						delete tasklist._id;
+						reply({ 
+							status: 'OK', 
+							type: 'tasklist', 
+							tasklist: tasklist 
+						});
+					}
+					else
+						reply({ status: 'Not found' });
+				});
 			};
 	
 			methods['grant'] = checklogin(message => {

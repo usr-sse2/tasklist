@@ -103,12 +103,15 @@ describe('Tasklist', function() {
 	
 	it('successfully gets tasklist by name', function() {
 		return pAsync(ws.socket, ['gettl', tlname])
-		.then(x => x.tasklists)
 		.should.become({
-			name: tlname, 
-			owner: "u", 
-			allowed:["u"],
-			tasks:[]
+			status: 'OK',
+			type: 'tasklist',
+			tasklist: {
+				name: tlname, 
+				owner: "u", 
+				allowed:["u"],
+				tasks:[]
+			}
 		});
 	});
 	
