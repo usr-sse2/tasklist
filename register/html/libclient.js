@@ -3,7 +3,11 @@ module.exports.p = function(ws, cmd, callback) {
 		//ws.on('message', callback);
 		ws.on('message', function fff(message) {
 			ws.removeListener('message', fff);
-			callback(undefined, message);
+			message = JSON.parse(message);
+			if ('status' in message && message.status != 'OK')
+				callback(message, undefined);
+			else
+				callback(undefined, message);
 		});
 	function send(object) {
 		return ws.send(JSON.stringify(object));
@@ -26,6 +30,7 @@ module.exports.p = function(ws, cmd, callback) {
 		break;
 	case 'newtl':
 	case 'deltl':
+	case 'gettl':
 		send({ type: cmd[0], name: cmd[1] });
 		break;
 	case 'grant':

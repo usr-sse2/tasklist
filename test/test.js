@@ -50,23 +50,23 @@ function disconnect() {
 	ws.disconnect();
 }
 
-describe('LoginTests', function() {
+describe('Login', function() {
 	beforeEach(connect);
 	afterEach(disconnect);
 
-	it('respond with OK on correct login and password', function() {
+	it('responds with OK on correct login and password', function() {
 		return pAsync(ws.socket, ['login', 'u', 'p'])
-		.should.become('{"status":"OK"}')
+		.should.become({ status: 'OK' })
 		.then(() => pAsync(ws.socket, ['id']))
-		.should.become('{"status":"OK","id":"u"}');
+		.should.become({ status: 'OK', id: 'u' });
 	});
 	
-	it('respond with error on incorrect login and password', function() {
+	it('responds with error on incorrect login and password', function() {
 		return pAsync(ws.socket, ['login', 'u', 'password'])
-		.should.become('{"status":"Wrong login/password"}')
+		.should.be.rejected//become({ status: 'Wrong login/password' })
 		.then(() => pAsync(ws.socket, ['id']))
-		.should.become('{"status":"Not logged in"}');
-	})	
+		.should.be.rejected//become({ status: 'Not logged in' });
+	});
 });
 
 
@@ -78,17 +78,53 @@ function connectAndLogin(done) {
 	.catch(done);	
 }
 
-describe('TasklistTests', function() {
-	before(connectAndLogin);
-	after(disconnect);
+describe('Tasklist', function() {
+	beforeEach(connectAndLogin);
+	afterEach(disconnect);
 	
 	var tlname;
 	
-	it('successfully creates tasklist', function() {
-		// tlname = '     __test_tasklist' + new Date().toString();
-// 		return pAsync(ws.socket, ['newtl', tlname])
-// 		.should.become('{"status":"OK"}')
-// 		.then(() => pAsync(ws.socket, ['getall'])
-//.should.eventually.contain()
+	it('successfully creates and gets tasklist', function() {
+		tlname = '     __test_tasklist' + new Date().toString();
+		return pAsync(ws.socket, ['newtl', tlname])
+		.should.become({ status: 'OK' });
+	});
+	
+	it('successfully gets all tasklists', function() {
+		return pAsync(ws.socket, ['getall'])
+		.then(x => x.tasklists)
+		.should.eventually.contain({
+			name: tlname, 
+			owner: "u", 
+			allowed:["u"],
+			tasks:[]
+		});
+	});
+	
+	it('successfully gets tasklist by name', function() {
+		return pAsync(ws.socket, ['gettl', tlname])
+		.then(x => x.tasklists)
+		.should.become({
+			name: tlname, 
+			owner: "u", 
+			allowed:["u"],
+			tasks:[]
+		});
+	});
+	
+	it('successfully deletes tasklist', function() {
+		return pAsync(ws.socket, ['deltl', tlname])
+		.should.become({ status: 'OK'});
+	});
+	
+	it('verifies that tasklist was deleted', function() {
+		return pAsync(ws.socket, ['getall'])
+		.then(x => x.tasklists)
+		.should.not.eventually.contain({
+			name: tlname, 
+			owner: "u", 
+			allowed:["u"],
+			tasks:[]
+		});
 	});
 });

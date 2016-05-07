@@ -1,6 +1,6 @@
 #!/bin/bash
 
-node libs/server.js & pid=$!
-sleep 2
+node server.js & pid=$!
+sleep 5
 ./node_modules/.bin/mocha
 kill -SIGINT $pid
