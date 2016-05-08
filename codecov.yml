@@ -1,0 +1,23 @@
+codecov:
+  token: 977ab599-88fa-4277-96e5-79c2445223ca
+  branch: master
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+  status:
+    project:
+      default:
+        target: auto
+        branches: master
+
+    patch:
+      default:
+        target: auto
+        branches: master
+
+    changes:
+      default:
+        branches: master
