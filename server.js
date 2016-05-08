@@ -128,8 +128,14 @@ MongoClient.connectAsync(process.env.MONGODB_URI)
 			.then(tl => {
 				if (tl == undefined)
 					throw 'Tasklist ' + message.tasklist + ' not found';
-				if (tl.allowed.indexOf(login) == -1)
+				
+				
+				if (tl.allowed.indexOf(login) == -1) {
+					console.log('throw');
 					throw 'Permission denied';
+				}
+				
+				console.log(tl.allowed.indexOf(login));
 				tasklist = tl;
 			
 				var task = tl.tasks.find(t => t.description == message.task);
@@ -156,12 +162,12 @@ MongoClient.connectAsync(process.env.MONGODB_URI)
 			.then(() => {
 				ok();
 				for (user of tasklist.allowed)
-				notify(user, 
-					'State of task ' + message.task + 
-					' in tasklist ' + message.tasklist + 
-					' has been changed to ' + message.state);
-				})
-				.catch(errorhandler);
+					notify(user, 
+						'State of task ' + message.task + 
+						' in tasklist ' + message.tasklist + 
+						' has been changed to ' + message.state);
+			})
+			.catch(errorhandler);
 			});
 	
 			methods['addtask'] = checklogin(message => {
