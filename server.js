@@ -130,12 +130,9 @@ MongoClient.connectAsync(process.env.MONGODB_URI)
 					throw 'Tasklist ' + message.tasklist + ' not found';
 				
 				
-				if (tl.allowed.indexOf(login) == -1) {
-					console.log('throw');
+				if (tl.allowed.indexOf(login) == -1)
 					throw 'Permission denied';
-				}
 				
-				console.log(tl.allowed.indexOf(login));
 				tasklist = tl;
 			
 				var task = tl.tasks.find(t => t.description == message.task);
