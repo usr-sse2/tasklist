@@ -359,4 +359,4 @@ function TaskList(name, owner) {
 	this.owner = owner;
 	this.allowed = [owner];
 	this.tasks = [];
-}
+} 
