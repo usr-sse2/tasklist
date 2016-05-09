@@ -364,22 +364,26 @@ describe('Multiuser', function() {
 	
 	it("notifies allowed users of new tasks", function() {
 		usrsse2.request(['addtask', tlname, 'Task 1'])
-		.then(() => u.receive().should.become({
+		.then(() => u.receive())
+		.should.become({
 			info: 'usrsse2 added new task Task 1 in tasklist' + tlname
-		}))
-		.then(() => usrsse2.receiveUntil(x => 'info' in x).should.become({
+		})
+		.then(() => usrsse2.receiveUntil(x => 'info' in x))
+		.should.become({
 			info: 'usrsse2 added new task Task 1 in tasklist' + tlname
-		}));
+		});
 	});
 
 	it("notifies allowed users of comments", function() {
 		usrsse2.request(['comment', tlname, 'Task 1', 'Comment'])
-		.then(() => u.receive().should.become({
+		.then(() => u.receive())
+		.should.become({
 			info: 'usrsse2 posted a new comment on task Task 1 in tasklist' + tlname
-		}))
-		.then(() => usrsse2.receiveUntil(x => 'info' in x).should.become({
+		})
+		.then(() => usrsse2.receiveUntil(x => 'info' in x))
+		.should.become({
 			info: 'usrsse2 posted a new comment on task Task 1 in tasklist' + tlname
-		}));
+		});
 	});
 	
 //			info: 'u added new task Task 1 in tasklist ' + tlname
