@@ -249,6 +249,52 @@ describe('Tasklist', function() {
 			client.request(['close', tlname, 'Task 1']).should.be.rejected);
 	});
 	
+	it("can't reopen an open task", function() {
+		return client.request(['reopen', tlname, 'Task 1']).should.be.rejected;
+	});	
+	
+	it("can close a task", function() {
+		return client.request(['close', tlname, 'Task 1'])
+		.then(() => client.receive())
+		.then(() => client.request(['gettl', tlname]))
+		.then(x => x.tasklist)
+		.should.become({
+			name: tlname,
+			owner: 'u',
+			allowed: ['u'],
+			tasks: [{
+				description: 'Task 1',
+				status: 'closed',
+				comments: []
+			}]
+		});
+	});
+	
+	it("can't close a closed task", function() {
+		return client.request(['close', tlname, 'Task 1']).should.be.rejected;
+	});	
+
+	it("can reopen a task", function() {
+		return client.request(['reopen', tlname, 'Task 1'])
+		.then(() => client.receive())
+		.then(() => client.request(['gettl', tlname]))
+		.then(x => x.tasklist)
+		.should.become({
+			name: tlname,
+			owner: 'u',
+			allowed: ['u'],
+			tasks: [{
+				description: 'Task 1',
+				status: 'reopened',
+				comments: []
+			}]
+		});
+	});
+
+	it("can't reopen a reopened task", function() {
+		return client.request(['reopen', tlname, 'Task 1']).should.be.rejected;
+	});	
+	
 	it("doesn't allow to add the same task twice", function() {
 		return client.request(['addtask', tlname, 'Task 1']).should.be.rejected;
 	});
@@ -286,7 +332,7 @@ describe('Tasklist', function() {
 				allowed: ['u'],
 				tasks: [{
 					description: 'Task 1',
-					status: 'open',
+					status: 'reopened',
 					comments: [{
 						author: 'u',
 						text: 'Comment 1'
