@@ -5,23 +5,24 @@ const chai = require('chai');
 const assert = chai.assert;
 const should = chai.should();
 const chaiAsPromised = require('chai-as-promised');
-
+const Server = require('../server.js');
 chai.use(chaiAsPromised);
 
 
 var client;
-function connect(done) {
+function connect() {
 	client = new ClientConnection();
-	client.connect('ws://localhost:' + process.env.PORT)
-	.then(() => done())
-	.catch(done);
+	return client.connect('ws://localhost:' + process.env.PORT)
 }
 
 function disconnect() {
-	client.disconnect();
+	return client.disconnect();
 }
 
-describe('Login', function() {
+before(Server.start);
+after(Server.stop);
+
+describe('Login', function() {	
 	beforeEach(connect);
 	afterEach(disconnect);
 

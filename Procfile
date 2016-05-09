@@ -1,1 +1,1 @@
-web: node libs/server.js
+web: node server_runner.js

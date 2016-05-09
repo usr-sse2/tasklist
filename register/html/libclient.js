@@ -20,7 +20,12 @@ ClientConnection.prototype.connect = function (url) {
 
 ClientConnection.prototype.disconnect = function () {
     'use strict';
-    this.ws.close();
+    var wsc = this;
+	return new Promise((resolve, reject) => {
+		wsc.ws.on('close', resolve);
+		wsc.ws.on('error', reject);
+		this.ws.close();
+	});
 };
 
 function registerHandler(ws, callback) {
