@@ -67,10 +67,16 @@ function notifyAll(message) {
 
 function onConnection (ws) {	
 	function ok() {
-		ws.send(OK);
+		try {
+			ws.send(OK);
+		}
+		catch(e) {}
 	}
 	function reply(obj) {
-		ws.send(JSON.stringify(obj));
+		try{
+			ws.send(JSON.stringify(obj));
+		}
+		catch(e) {}
 	}
 	function status(msg) {
 		reply({ status: msg });
@@ -206,7 +212,10 @@ function onConnection (ws) {
 				tl.tasks.push(new Task(message.description));
 				break;
 			case 'removetask':
-				tl.tasks.splice(tl.tasks.findIndex(task => task.description == message.description));
+				var index = tl.tasks.findIndex(task => task.description == message.description);
+				if (index == -1)
+					throw 'Task ' + message.description + ' not found in tasklist ' + message.tasklist;
+				tl.tasks.splice(index);
 				break;
 			}
 			return tasklists.updateAsync({ _id: tl._id }, tl);

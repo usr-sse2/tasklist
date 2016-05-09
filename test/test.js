@@ -8,15 +8,18 @@ const chaiAsPromised = require('chai-as-promised');
 const Server = require('../server.js');
 chai.use(chaiAsPromised);
 
+const url = 'ws://localhost:' + process.env.PORT;
 
 var client;
 function connect() {
 	client = new ClientConnection();
-	return client.connect('ws://localhost:' + process.env.PORT)
+	return client.connect(url);
 }
 
 function disconnect() {
-	return client.disconnect();
+	return client.request(['logout'])
+	.catch(() => undefined)
+	.then(() => client.disconnect());
 }
 
 before(Server.start);
@@ -34,10 +37,9 @@ describe('Login', function() {
 	});
 	
 	it('responds with error on incorrect login and password', function() {
-		return client.request(['login', 'u', 'password'])
-		.should.be.rejected//become({ status: 'Wrong login/password' })
-		.then(() => client.request(['id']))
-		.should.be.rejected//become({ status: 'Not logged in' });
+		return client.request(['login', 'u', 'password']).should.be.rejected//become({ status: 'Wrong login/password' })
+		.then(() => client.request(['id']).should.be.rejected);
+		//become({ status: 'Not logged in' });
 	});
 	
 	it('can logout and login as different user', function() {
@@ -45,12 +47,40 @@ describe('Login', function() {
 		.then(() => client.request(['id']))
 		.should.become({ status: 'OK', id: 'u' })
 		.then(() => client.request(['logout']))
-		.should.be.fulfilled
-		.then(() => client.request(['id']))
-		.should.be.rejected
+		.then(() => client.request(['id']).should.be.rejected)
 		.then(() => client.request(['login', 'usrsse2', '123']))
 		.then(() => client.request(['id']))
 		.should.become({ status: 'OK', id: 'usrsse2' });
+	});
+	
+	it("can't login twice without logout", function() {
+		return client.request(['login', 'u', 'p']).should.be.fulfilled
+		.then(() => client.request(['login', 'usrsse2', '123']).should.be.rejected);
+	});
+	
+	it('can login as different users in two connections', function() {
+		var c2 = new ClientConnection();
+		return client.request(['login', 'u', 'p'])
+		.then(() => c2.connect(url))
+		.then(() => c2.request(['login', 'usrsse2', '123']))
+		.then(() => client.request(['id']))
+		.should.become({ status: 'OK', id: 'u' })
+		.then(() => c2.request(['id']))
+		.should.become({ status: 'OK', id: 'usrsse2' })
+		.then(() => client.request(['logout']))
+		.then(() => c2.request(['logout']))
+		.catch((e) => {
+			c2.disconnect();
+			throw e;
+		});
+	});
+	
+	it("can't login as the same user in two connections", function() {
+		var c2 = new ClientConnection();
+		return client.request(['login', 'u', 'p'])
+		.then(() => c2.connect(url))
+		.then(() => c2.request(['login', 'u', 'p']).should.be.rejected)
+		.then(() => c2.disconnect());
 	});
 });
 
@@ -112,6 +142,14 @@ describe('Tasklist', function() {
 		});
 	});
 	
+	it("can't grant a non-existing user access rights", function() {
+		return client.request(['grant', tlname, 'usrsse3']).should.be.rejected;
+	});
+	
+	it("can't grant a user access rights twice", function() {
+		return client.request(['grant', tlname, 'usrsse2']).should.be.rejected;
+	});
+		
 	it('allows granted user to add task', function() {
 		return client.request(['logout'])
 		.then(() => client.request(['login', 'usrsse2', '123']))
@@ -131,11 +169,47 @@ describe('Tasklist', function() {
 		});
 	});
 	
+	it('allows owner to add and remove tasks', function() {
+		return client.request(['addtask', tlname, 'Task 4'])
+		.then(() => client.requestNoWait(['gettl', tlname]))
+		.then(() => client.receiveUntilCondition(x => 'tasklist' in x))
+		.then(x => x.tasklist)
+		.should.become({
+			name: tlname,
+			owner: 'u',
+			allowed: ['u', 'usrsse2'],
+			tasks: [
+			{
+				description: 'Task 1',
+				status: 'open',
+				comments: []
+			},
+			{
+				description: 'Task 4',
+				status: 'open',
+				comments: []
+			}]
+		})
+		.then(() => client.request(['removetask', tlname, 'Task 4']))
+		.then(() => client.requestNoWait(['gettl', tlname]))
+		.then(() => client.receiveUntilCondition(x => 'tasklist' in x))
+		.then(x => x.tasklist)
+		.should.become({
+			name: tlname,
+			owner: 'u',
+			allowed: ['u', 'usrsse2'],
+			tasks: [{
+				description: 'Task 1',
+				status: 'open',
+				comments: []
+			}]
+		});
+	});
+	
 	it("doesn't allow non-owner to revoke", function() {
 		return client.request(['logout'])
 		.then(() => client.request(['login', 'usrsse2', '123']))
-		.then(() => client.request(['revoke', tlname, 'usrsse2']))
-		.should.be.rejected;
+		.then(() => client.request(['revoke', tlname, 'usrsse2']).should.be.rejected);
 	});
 	
 	it('revokes access right for tasklist from user', function() {
@@ -152,6 +226,10 @@ describe('Tasklist', function() {
 				comments: []
 			}]
 		});
+	});
+	
+	it("can't revoke access rights from user twice", function() {
+		return client.request(['revoke', tlname, 'usrsse2']).should.be.rejected;
 	});
 	
 	it("doesn't allow revoked user to add tasks", function() {
@@ -171,6 +249,57 @@ describe('Tasklist', function() {
 			client.request(['close', tlname, 'Task 1']).should.be.rejected);
 	});
 	
+	it("doesn't allow to add the same task twice", function() {
+		return client.request(['addtask', tlname, 'Task 1']).should.be.rejected;
+	});
+	
+	it("can't add a task to non-existing tasklist", function() {
+		return client.request(['addtask', tlname + '$', 'Task 3']).should.be.rejected;
+	});
+	
+	it("can't remove a non-existing task", function() {
+		return client.request(['removetask', tlname, 'Task 0']).should.be.rejected;
+	});
+	
+	it("can't change state of a non-existing task", function() {
+		return client.request(['close', tlname, 'Task 0']).should.be.rejected;
+	});
+	
+	it('posts a comment', function() {
+		return client.requestNoWait(['comment', tlname, 'Task 1', 'Comment 1'])
+		.then(() => client.receiveUntilCondition(x => 'info' in x))
+		.should.become({
+			info: 'u posted a new comment on task Task 1 in tasklist ' + tlname
+		})
+		.then(() => client.request(['gettl', tlname]))
+		.then(x => {
+			var l = x.tasklist.tasks[0].comments[0];
+			delete l.date;
+			return x;
+		})
+		.should.become({
+			status: 'OK',
+			type: 'tasklist',
+			tasklist: {
+				name: tlname,
+				owner: 'u',
+				allowed: ['u'],
+				tasks: [{
+					description: 'Task 1',
+					status: 'open',
+					comments: [{
+						author: 'u',
+						text: 'Comment 1'
+					}]
+				}]
+			}
+		});
+	});
+	
+	it("can't post a comment to non-existing task", function() {
+		return client.request(['comment', tlname, 'Task 5', 'Comment 1']).should.be.rejected;
+	});
+	
 	it('successfully deletes tasklist', function() {
 		return client.request(['deltl', tlname])
 		.should.become({ status: 'OK'});
@@ -185,5 +314,80 @@ describe('Tasklist', function() {
 			allowed:["u"],
 			tasks:[]
 		});
+	});
+	
+	it("can't delete tasklist twice", function() {
+		return client.request(['deltl', tlname]).should.be.rejected;
+	});
+	
+	it("can't get a deleted tasklist", function() {
+		return client.request(['gettl', tlname]).should.be.rejected;
+	});
+	
+	it("can't post a comment to non-existing task", function() {
+		return client.request(['comment', tlname, 'Task 1', 'Comment 1']).should.be.rejected;
+	});	
+	
+	it("can't grant a user access to non-existing tasklist", function() {
+		return client.request(['grant', tlname, 'usrsse2']).should.be.rejected;
+	});
+	
+	it("can't change state of a task in a non-existing tasklist", function() {
+		return client.request(['close', tlname, 'Task 1']).should.be.rejected;
+	});
+});
+
+describe('Multiuser', function() {
+	var u;
+	var usrsse2;
+	
+	var tlname;
+	
+	before(function() {
+		tlname = '     __test_tasklist' + new Date().toString() + '_';
+		
+		u = new ClientConnection();
+		usrsse2 = new ClientConnection();
+		return u.connect(url)
+		.then(() => u.request(['login', 'u', 'p']))
+		.then(() => usrsse2.connect(url))
+		.then(() => usrsse2.request(['login', 'usrsse2', '123']));
+	});
+	
+	it("notifies granted user of its rights", function() {
+		u.request(['newtl', tlname])
+		.then(() => u.request(['grant', tlname, 'usrsse2']))
+		.then(() => usrsse2.receive().should.become({
+			info: 'Now you have modification rights for tasklist ' + tlname
+		}));
+	});
+	
+	it("notifies allowed users of new tasks", function() {
+		usrsse2.request(['addtask', tlname, 'Task 1'])
+		.then(() => u.receive().should.become({
+			info: 'usrsse2 added new task Task 1 in tasklist' + tlname
+		}))
+		.then(() => usrsse2.receiveUntil(x => 'info' in x).should.become({
+			info: 'usrsse2 added new task Task 1 in tasklist' + tlname
+		}));
+	});
+
+	it("notifies allowed users of comments", function() {
+		usrsse2.request(['comment', tlname, 'Task 1', 'Comment'])
+		.then(() => u.receive().should.become({
+			info: 'usrsse2 posted a new comment on task Task 1 in tasklist' + tlname
+		}))
+		.then(() => usrsse2.receiveUntil(x => 'info' in x).should.become({
+			info: 'usrsse2 posted a new comment on task Task 1 in tasklist' + tlname
+		}));
+	});
+	
+//			info: 'u added new task Task 1 in tasklist ' + tlname
+	
+	after(function() {
+		return u.request(['logout'])
+		.then(() => u.disconnect())
+		.then(() => usrsse2.request(['logout']))
+		.then(() => usrsse2.disconnect());
 	});
 });
