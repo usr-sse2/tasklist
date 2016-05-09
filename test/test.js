@@ -409,24 +409,48 @@ describe('Multiuser', function() {
 	});
 	
 	it("notifies allowed users of new tasks", function() {
+		var r;
 		usrsse2.request(['addtask', tlname, 'Task 1'])
 		.then(() => u.receive())
 		.should.become({
 			info: 'usrsse2 added new task Task 1 in tasklist' + tlname
 		})
-		.then(() => usrsse2.receiveUntil(x => 'info' in x))
+		//.then(() => usrsse2.receiveUntil(x => 'info' in x))
+		.then(() => usrsse2.receive())
+		.then(x => {
+			if ('info' in x)
+				r = x;
+		})
+		.then(() => usrsse2.receive())
+		.then(x => {
+			if ('info' in x)
+				r = x;
+			return r;
+		})
 		.should.become({
 			info: 'usrsse2 added new task Task 1 in tasklist' + tlname
 		});
 	});
 
 	it("notifies allowed users of comments", function() {
+		var r;
 		usrsse2.request(['comment', tlname, 'Task 1', 'Comment'])
 		.then(() => u.receive())
 		.should.become({
 			info: 'usrsse2 posted a new comment on task Task 1 in tasklist' + tlname
 		})
-		.then(() => usrsse2.receiveUntil(x => 'info' in x))
+		.then(() => usrsse2.receive())
+		.then(x => {
+			if ('info' in x)
+				r = x;
+		})
+		.then(() => usrsse2.receive())
+//		.then(() => usrsse2.receiveUntil(x => 'info' in x))
+		.then(x => {
+			if ('info' in x)
+				r = x;
+			return r;
+		})
 		.should.become({
 			info: 'usrsse2 posted a new comment on task Task 1 in tasklist' + tlname
 		});
@@ -436,8 +460,10 @@ describe('Multiuser', function() {
 	
 	after(function() {
 		return u.request(['logout'])
+		.catch(() => undefined)
 		.then(() => u.disconnect())
 		.then(() => usrsse2.request(['logout']))
+		.catch(() => undefined)
 		.then(() => usrsse2.disconnect());
 	});
 });
