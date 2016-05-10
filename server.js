@@ -176,6 +176,18 @@ function onConnection (ws) {
 				if (task.status != 'closed')
 					throw 'Already open';
 				break;
+			case 'assigned':
+				if (task.status == 'closed')
+					throw 'Already closed. Reopen first to assign';
+				
+				usercollection.findOneAsync({ login: message.user })
+				.then(user => {
+					if (user)
+						task.assignee = message.user;
+					else
+						throw 'User not found';
+				});
+				break;
 			default:
 				throw 'Invalid state ' + message.state;
 			}

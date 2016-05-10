@@ -96,11 +96,13 @@ ClientConnection.prototype.requestInternal = function(cmd, wait, callback) {
 		send({ type: cmd[0], tasklist: cmd[1], task: cmd[2], comment: cmd[3] });
 		break;
 	case 'close':
-		send ({ type: 'setstate', tasklist: cmd[1], task: cmd[2], state: 'closed' });
+		send({ type: 'setstate', tasklist: cmd[1], task: cmd[2], state: 'closed' });
 		break;
 	case 'reopen':
-		send ({ type: 'setstate', tasklist: cmd[1], task: cmd[2], state: 'reopened'});
+		send({ type: 'setstate', tasklist: cmd[1], task: cmd[2], state: 'reopened' });
 		break;
+	case 'assign':
+		send({ type: 'setstate', tasklist: cmd[1], task: cmd[2], state: 'assigned', user: cmd[3] });
 	case 'exit':
 		process.exit(0);
 		break;
